@@ -20,9 +20,7 @@ func generateRandomElements(size int) ([]int, error) {
 	var randValues []int
 	src := rand.NewSource(time.Now().Unix())
 	for i := 0; i < size; i++ {
-		randomNumber := src.Int63()
-		randomNumber = randomNumber%int64(size) + 1
-		randValues = append(randValues, int(randomNumber))
+		randValues = append(randValues, int(src.Int63()))
 	}
 	return randValues, nil
 }
@@ -47,7 +45,6 @@ func maxChunks(data []int) (int, error) {
 		return 0, fmt.Errorf("incorrect size slice: data = nil or 0 or 1")
 	}
 	var wg sync.WaitGroup
-	var mu sync.Mutex
 	lenSlice := len(data) / CHUNKS
 	maxValueSlice := make([]int, 8)
 	for i := 0; i < CHUNKS; i++ {
@@ -55,23 +52,18 @@ func maxChunks(data []int) (int, error) {
 		wg.Add(1)
 		go func(s []int) {
 			defer wg.Done()
-			maxVal := 0
-			for _, val := range slice {
-				if val > maxVal {
-					maxVal = val
-				}
+			maxVal, err := maximum(slice)
+			if err != nil {
+				fmt.Println()
 			}
-			mu.Lock()
-			maxValueSlice = append(maxValueSlice, maxVal)
-			mu.Unlock()
+			maxValueSlice[i] = maxVal
 		}(slice)
 	}
 	wg.Wait()
-	maxVal := 0
-	for _, val := range maxValueSlice {
-		if val > maxVal {
-			maxVal = val
-		}
+
+	maxVal, err := maximum(maxValueSlice)
+	if err != nil {
+		fmt.Println()
 	}
 	return maxVal, nil
 }
@@ -83,13 +75,19 @@ func main() {
 
 	fmt.Println("Ищем максимальное значение в один поток")
 	start := time.Now() // начало отсчета
-	max, _ := maximum(slice)
+	max, err := maximum(slice)
+	if err != nil {
+		fmt.Println()
+	}
 	elapsed := time.Since(start) // конец отсчета
 	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d ms\n", max, elapsed)
 
 	fmt.Printf("Ищем максимальное значение в %d потоков\n", CHUNKS)
 	start = time.Now()
-	max, _ = maxChunks(slice)
+	max, err = maxChunks(slice)
+	if err != nil {
+		fmt.Println()
+	}
 	elapsed = time.Since(start)
 	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d ms\n", max, elapsed)
 	fmt.Print(max)
